@@ -1,0 +1,78 @@
+# Xiaomi 12S Pro (mayfly), SM8475 / waipio family, Halium 16
+deviceinfo_name="Xiaomi 12S Pro"
+deviceinfo_manufacturer="Xiaomi"
+deviceinfo_codename="mayfly"
+deviceinfo_arch="aarch64"
+
+##### Kernel
+deviceinfo_kernel_source="https://github.com/dopaemon/android_kernel_xiaomi_common.git"
+deviceinfo_kernel_source_branch="halium-16.0"
+
+# Checked out next to the kernel, where its in-tree symlinks expect them:
+#   arch/arm64/boot/dts/vendor -> ../../../../../sm8450-devicetrees
+deviceinfo_kernel_extra_repos="
+sm8450-devicetrees=https://github.com/LineageOS/android_kernel_xiaomi_sm8450-devicetrees.git#lineage-23.0
+sm8450-modules=https://github.com/LineageOS/android_kernel_xiaomi_sm8450-modules.git#lineage-23.0
+"
+
+deviceinfo_kernel_clang_compile="true"
+deviceinfo_kernel_llvm_compile="true"
+# Halium 16 defaults to r510928 (2024), too new for this 5.10 tree.
+# Knob: bump if the kernel or modules stop building.
+deviceinfo_kernel_clang_branch="master-kernel-build-2022"
+deviceinfo_kernel_clang_revision="r450784e"
+
+deviceinfo_kernel_image_name="Image"
+deviceinfo_kernel_defconfig="gki_defconfig vendor/waipio_GKI.config vendor/xiaomi_GKI.config vendor/mayfly_GKI.config halium.config"
+
+# Same set and order as TARGET_KERNEL_EXT_MODULES in sm8450-common/BoardConfigCommon.mk
+deviceinfo_kernel_external_modules="
+sm8450-modules/qcom/opensource/mmrm-driver
+sm8450-modules/qcom/opensource/audio-kernel
+sm8450-modules/qcom/opensource/camera-kernel
+sm8450-modules/qcom/opensource/cvp-kernel
+sm8450-modules/qcom/opensource/dataipa/drivers/platform/msm
+sm8450-modules/qcom/opensource/datarmnet/core
+sm8450-modules/qcom/opensource/datarmnet-ext/aps
+sm8450-modules/qcom/opensource/datarmnet-ext/offload
+sm8450-modules/qcom/opensource/datarmnet-ext/shs
+sm8450-modules/qcom/opensource/datarmnet-ext/perf
+sm8450-modules/qcom/opensource/datarmnet-ext/perf_tether
+sm8450-modules/qcom/opensource/datarmnet-ext/sch
+sm8450-modules/qcom/opensource/datarmnet-ext/wlan
+sm8450-modules/qcom/opensource/display-drivers/msm
+sm8450-modules/qcom/opensource/eva-kernel
+sm8450-modules/qcom/opensource/video-driver
+sm8450-modules/qcom/opensource/wlan/qcacld-3.0/.qca6490
+sm8450-modules/qcom/opensource/wlan/qcacld-3.0/.qca6750
+"
+
+deviceinfo_kernel_cmdline="video=vfb:640x400,bpp=32,memsize=3072000 disable_dma32=on androidboot.hardware=qcom androidboot.memcg=1 androidboot.usbcontroller=a600000.dwc3 androidboot.boot_devices=soc/1d84000.ufshc systempart=/dev/mapper/system"
+
+##### Boot image
+deviceinfo_bootimg_header_version="4"
+deviceinfo_flash_pagesize="4096"
+deviceinfo_flash_offset_base="0x00000000"
+# BOARD_BOOTIMAGE_PARTITION_SIZE 0x0C000000
+deviceinfo_bootimg_partition_size="$((192*$((2**20))))"
+# BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE 0x06000000
+deviceinfo_vendor_boot_partition_size="$((96*$((2**20))))"
+deviceinfo_bootimg_os_version="16"
+deviceinfo_bootimg_os_patch_level="2025-12"
+deviceinfo_ramdisk_compression="lz4"
+
+# cape/capep = SM8475. Base DTBs from mayfly-sm8475-pm8008-overlay.dtbo-base
+# in sm8450-devicetrees/qcom/Makefile.
+deviceinfo_dtb="cape.dtb cape-v2.dtb capep.dtb"
+deviceinfo_dtbo="mayfly-sm8475-pm8008-overlay.dtbo"
+
+##### Recovery
+deviceinfo_use_unified_recovery="true"
+# TARGET_SCREEN_DENSITY 440
+deviceinfo_unified_recovery_ui_density="xxhdpi"
+
+##### Rootfs
+deviceinfo_rootfs_image_sector_size="4096"
+deviceinfo_system_partition_size="4500M"
+deviceinfo_halium_version="16"
+deviceinfo_ubuntu_touch_release="24.04-2.x"

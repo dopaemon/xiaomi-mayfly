@@ -1,0 +1,6 @@
+include:
+  - remote: https://gitlab.com/ubports/porting/community-ports/halium-generic-adaptation-build-tools/-/raw/personal/notkit/build-kleaf-modules/gsi-port-ci.yml
+
+variables:
+  ADAPTATION_TOOLS_BRANCH: personal/notkit/build-kleaf-modules
+  ADAPTATION_TOOLS_USE_BUILD_WRAPPER: "1"
