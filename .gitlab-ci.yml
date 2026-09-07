@@ -4,8 +4,24 @@ include:
 variables:
   ADAPTATION_TOOLS_BRANCH: personal/notkit/build-kleaf-modules
   ADAPTATION_TOOLS_USE_BUILD_WRAPPER: "1"
+  # A cached workdir is tens of GB; the default zip is far slower than fastzip
+  # at level "fastest", and the objects barely compress anyway.
+  FF_USE_FASTZIP: "true"
+  CACHE_COMPRESSION_LEVEL: fastest
 
 # Kernel + 18 out-of-tree module trees do not finish in the default 1h.
 build:
   timeout: 3h
   # Swap for `tags: [ubports]` if this port gets access to UBports' runners.
+  cache:
+    # Sources and objects only; build.sh wipes workdir/tmp on every run anyway.
+    # setup_repositories.sh clones through clone_if_not_existing, and the kernel
+    # is built with O=KERNEL_OBJ, so a restored workdir turns a 45 min build
+    # into a relink. Absolute paths inside the objects stay valid: the runner
+    # always checks out to /builds/$CI_PROJECT_PATH.
+    - key: "workdir-$CI_COMMIT_REF_SLUG"
+      paths:
+        - workdir/downloads/
+      # The failures we iterate on happen in the last 10% of the build, so an
+      # on_success-only cache would never be written.
+      when: always
