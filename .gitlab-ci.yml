@@ -4,3 +4,8 @@ include:
 variables:
   ADAPTATION_TOOLS_BRANCH: personal/notkit/build-kleaf-modules
   ADAPTATION_TOOLS_USE_BUILD_WRAPPER: "1"
+
+# Kernel + 18 out-of-tree module trees do not finish in the default 1h.
+build:
+  timeout: 3h
+  # Swap for `tags: [ubports]` if this port gets access to UBports' runners.
