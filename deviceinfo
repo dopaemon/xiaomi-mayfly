@@ -23,7 +23,13 @@ deviceinfo_kernel_clang_branch="master-kernel-build-2022"
 deviceinfo_kernel_clang_revision="r450784e"
 
 deviceinfo_kernel_image_name="Image"
-deviceinfo_kernel_defconfig="gki_defconfig vendor/waipio_GKI.config vendor/xiaomi_GKI.config vendor/mayfly_GKI.config halium.config"
+# A fragment containing "/" is resolved relative to the downloads dir, not to
+# arch/arm64/configs (build-kernel.sh), so the vendor ones need the full path.
+deviceinfo_kernel_defconfig="gki_defconfig \
+    android_kernel_xiaomi_common/arch/arm64/configs/vendor/waipio_GKI.config \
+    android_kernel_xiaomi_common/arch/arm64/configs/vendor/xiaomi_GKI.config \
+    android_kernel_xiaomi_common/arch/arm64/configs/vendor/mayfly_GKI.config \
+    halium.config"
 
 # Same set and order as TARGET_KERNEL_EXT_MODULES in sm8450-common/BoardConfigCommon.mk
 deviceinfo_kernel_external_modules="
