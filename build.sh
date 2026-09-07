@@ -18,4 +18,16 @@ sed -i 's/ -j"$(nproc --all)" modules$/ -j"$(nproc --all)" all/' build/build-ker
     exit 1
 }
 
+# modpost only sees KBUILD_EXTRA_SYMBOLS from a tree's Kbuild, never from its
+# Makefile (scripts/Makefile.modpost prefers Kbuild when both exist). datarmnet-ext
+# sets it in the Makefile only, so rmnet_core's exports are invisible and modpost
+# fails with "rmnet_aps_set_prio undefined". Hand every tree the whole set through
+# the environment instead; paths are relative to KERNEL_OBJ, and modpost ignores
+# the ones not built yet ($(wildcard ...) in Makefile.modpost).
+source ./deviceinfo
+for m in $deviceinfo_kernel_external_modules; do
+    KBUILD_EXTRA_SYMBOLS="$KBUILD_EXTRA_SYMBOLS ../$m/Module.symvers"
+done
+export KBUILD_EXTRA_SYMBOLS
+
 ./build/build.sh "$@"
