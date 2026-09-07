@@ -77,9 +77,11 @@ deviceinfo_bootimg_os_patch_level="2025-02"
 deviceinfo_ramdisk_compression="lz4"
 
 # cape/capep = SM8475. Base DTBs from mayfly-sm8475-pm8008-overlay.dtbo-base
-# in sm8450-devicetrees/qcom/Makefile.
-deviceinfo_dtb="cape.dtb cape-v2.dtb capep.dtb"
-deviceinfo_dtbo="mayfly-sm8475-pm8008-overlay.dtbo"
+# in sm8450-devicetrees/qcom/Makefile. Paths are relative to
+# KERNEL_OBJ/arch/arm64/boot/dts/ (make-dtboimage.sh:23, make-bootimage.sh:256),
+# and the in-tree symlink puts them under vendor/qcom/.
+deviceinfo_dtb="vendor/qcom/cape.dtb vendor/qcom/cape-v2.dtb vendor/qcom/capep.dtb"
+deviceinfo_dtbo="vendor/qcom/mayfly-sm8475-pm8008-overlay.dtbo"
 
 ##### Recovery
 deviceinfo_use_unified_recovery="true"
