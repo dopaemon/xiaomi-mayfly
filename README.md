@@ -25,9 +25,25 @@ Push to GitLab and let CI run it, or on a Linux box with a case-sensitive FS:
 Artifacts: `out/boot.img`, `out/vendor_boot.img`, `out/dtbo.img`,
 `out/recovery.img`, `out/ubuntu.img`.
 
+## Verified against stock
+
+Values below were read out of `mayfly_images_OS2.0.209.0.VLTCNXM` with
+`unpack_bootimg.py`, not guessed:
+
+- boot header v4, pagesize 0x1000, kernel 0x8000 / ramdisk 0x1000000 /
+  tags 0x100 / dtb 0x1f00000
+- boot.img header says OS 12.0.0, patch level 2025-02
+- stock boot.img cmdline is empty; `video=`/`disable_dma32=` live in
+  vendor_boot, `androidboot.*` in bootconfig
+- both ramdisks are lz4
+- the three base DTBs we build (`cape` = Cape SoC, `cape-v2` = Cape LTE Only,
+  `capep` = CapeP) match stock entries 0-2 of its 14-DTB blob
+
 ## Still missing
 
 - `overlay/` — gbinder.conf, ofono binder config, udev rules, deviceinfo yaml,
   usb-moded config. Written after first boot, per subsystem.
-- `vendor-ramdisk-overlay/lib/modules/modules.load` — first-stage module list,
-  derived from `modules.list.msm.waipio` in the kernel tree.
+- `vendor-ramdisk-overlay/lib/modules/modules.load` is the kernel's own
+  `modules.list.msm.waipio` (100 modules). Stock loads 12 more Xiaomi-specific
+  ones (`bootinfo`, `mi_memory`, `mi_power`, `metis`, `swinfo`, ...); add them
+  if something is missing at first stage.

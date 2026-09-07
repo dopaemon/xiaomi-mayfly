@@ -47,18 +47,27 @@ sm8450-modules/qcom/opensource/wlan/qcacld-3.0/.qca6490
 sm8450-modules/qcom/opensource/wlan/qcacld-3.0/.qca6750
 "
 
-deviceinfo_kernel_cmdline="video=vfb:640x400,bpp=32,memsize=3072000 disable_dma32=on androidboot.hardware=qcom androidboot.memcg=1 androidboot.usbcontroller=a600000.dwc3 androidboot.boot_devices=soc/1d84000.ufshc systempart=/dev/mapper/system"
+# Stock boot.img carries an empty cmdline; everything lives in vendor_boot,
+# with the androidboot.* keys in bootconfig (see ./bootconfig).
+deviceinfo_kernel_vendor_cmdline="video=vfb:640x400,bpp=32,memsize=3072000 disable_dma32=on bootconfig systempart=/dev/mapper/system"
+deviceinfo_vendor_bootconfig_path="bootconfig"
 
 ##### Boot image
 deviceinfo_bootimg_header_version="4"
 deviceinfo_flash_pagesize="4096"
 deviceinfo_flash_offset_base="0x00000000"
+deviceinfo_flash_offset_kernel="0x00008000"
+deviceinfo_flash_offset_ramdisk="0x01000000"
+deviceinfo_flash_offset_tags="0x00000100"
+deviceinfo_flash_offset_dtb="0x01f00000"
 # BOARD_BOOTIMAGE_PARTITION_SIZE 0x0C000000
 deviceinfo_bootimg_partition_size="$((192*$((2**20))))"
 # BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE 0x06000000
 deviceinfo_vendor_boot_partition_size="$((96*$((2**20))))"
-deviceinfo_bootimg_os_version="16"
-deviceinfo_bootimg_os_patch_level="2025-12"
+# Stock boot.img header says 12.0.0 / 2025-02; keep it identical.
+# This is the boot header field, unrelated to deviceinfo_halium_version.
+deviceinfo_bootimg_os_version="12"
+deviceinfo_bootimg_os_patch_level="2025-02"
 deviceinfo_ramdisk_compression="lz4"
 
 # cape/capep = SM8475. Base DTBs from mayfly-sm8475-pm8008-overlay.dtbo-base
