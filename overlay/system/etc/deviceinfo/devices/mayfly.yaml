@@ -1,0 +1,10 @@
+mayfly:
+  Name: mayfly
+  PrettyName: Xiaomi 12S Pro
+  Vendor: Xiaomi
+  DeviceType: phone
+  # 8 * TARGET_SCREEN_DENSITY / 160, density from BoardConfig.mk:23
+  GridUnit: 22
+  SupportedOrientations: Portrait, LandscapeInverted, PortraitInverted, Landscape
+  PrimaryOrientation: Portrait
+  OfonoPlugin: binder
