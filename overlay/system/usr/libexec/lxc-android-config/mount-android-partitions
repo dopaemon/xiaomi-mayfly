@@ -275,6 +275,69 @@ if [ -L /android/vendor/odm ] && \
     fi
 fi
 
+# Both /vendor/etc/init/hw/init.qti.kernel.rc and init.target.rc do
+#   wait_for_prop vendor.all.modules.ready 1
+# in "on init". That property is only set by /vendor/bin/vendor_modprobe.sh
+# once it has modprobe'd the stock modules out of /vendor_dlkm/lib/modules;
+# those are built for the stock kernel and never load into ours, so the script
+# falls through to "exit 1" and the property is never set. Android init then
+# blocks in "on init" forever: no late-init, no class_start, no HAL at all --
+# composer, sensors and vibrator all end up as "Could not find ... for
+# ctl.interface_start" and the display never comes up. Our own modules come
+# from vendor-ramdisk-overlay and are loaded by the initrd long before this,
+# so the wait has nothing left to wait for. /android/vendor is mounted read
+# only, hence the patched copy plus bind mount; the final rbind of /android
+# carries it into the container.
+for rc in /android/vendor/etc/init/hw/init.qti.kernel.rc \
+          /android/vendor/etc/init/hw/init.target.rc \
+; do
+    [ -e "$rc" ] || continue
+    grep -q "wait_for_prop vendor.all.modules.ready" "$rc" || continue
+
+    log "Patching $rc: modules are already loaded by the initrd"
+    patched="/run/$(basename "$rc")"
+    sed -e "s/^\([[:space:]]*\)wait_for_prop vendor\.all\.modules\.ready 1/\1setprop vendor.all.modules.ready 1/" \
+        "$rc" >"$patched"
+    mount --bind "$patched" "$rc"
+done
+
+# Android 12+ vndservicemanager aborts on its first cross-process transaction
+#   Check failed: nullptr == IPCThreadState::self()->getServingStackPointer()
+#   ... Did not get context PID N. We should always get contexts from other
+#   processes.
+# when binder hands it a null security context. That context comes from
+# SELinux, which needs a policy loaded: the kernel initialises SELinux but the
+# thing that would normally load a policy is Android's first stage init, which
+# our initrd replaces. Until one is loaded selinuxfs answers ENOTCONN
+# ("Operation not supported on transport endpoint") and every label lookup
+# fails. With vndservicemanager dead there is no context manager on
+# /dev/vndbinder, so the display composer never registers and init respawns it
+# forever -- black screen, and the phone runs hot from the crash loop.
+# The kernel stays permissive here (CONFIG_SECURITY_SELINUX_DEVELOP and no
+# enforcing=1), so the policy only labels, it never denies.
+# selinuxfs wants the whole policy in a single write, hence dd over cat.
+if [ -d /sys/fs/selinux ] && ! [ -e /sys/fs/selinux/load ]; then
+    mount -t selinuxfs selinuxfs /sys/fs/selinux || true
+fi
+
+if [ -w /sys/fs/selinux/load ]; then
+    for policy in \
+        /android/odm/etc/selinux/precompiled_sepolicy \
+        /android/vendor/etc/selinux/precompiled_sepolicy \
+    ; do
+        [ -e "$policy" ] || continue
+
+        log "Loading SELinux policy from $policy"
+        if dd "if=$policy" of=/sys/fs/selinux/load \
+                "bs=$(stat -c %s "$policy")" count=1 status=none; then
+            echo 0 >/sys/fs/selinux/enforce || true
+        else
+            log "Failed to load $policy"
+        fi
+        break
+    done
+fi
+
 # Some special handling for /android/apex
 if [ -d /android/apex ]; then
     log "Handling /android/apex mounts"

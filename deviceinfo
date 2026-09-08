@@ -25,11 +25,14 @@ deviceinfo_kernel_clang_revision="r450784e"
 deviceinfo_kernel_image_name="Image"
 # A fragment containing "/" is resolved relative to the downloads dir, not to
 # arch/arm64/configs (build-kernel.sh), so the vendor ones need the full path.
+# The same rule lets ../selinux.config reach this repo, which sits one level
+# above workdir/; it has to come after halium.config to undo its LSM ordering.
 deviceinfo_kernel_defconfig="gki_defconfig \
     android_kernel_xiaomi_common/arch/arm64/configs/vendor/waipio_GKI.config \
     android_kernel_xiaomi_common/arch/arm64/configs/vendor/xiaomi_GKI.config \
     android_kernel_xiaomi_common/arch/arm64/configs/vendor/mayfly_GKI.config \
-    halium.config"
+    halium.config \
+    ../selinux.config"
 
 # Same set and order as TARGET_KERNEL_EXT_MODULES in sm8450-common/BoardConfigCommon.mk
 deviceinfo_kernel_external_modules="
@@ -57,7 +60,13 @@ sm8450-modules/qcom/opensource/wlan/qcacld-3.0/.qca6750
 # with the androidboot.* keys in bootconfig (see ./bootconfig). The bootloader
 # adds androidboot.slot_suffix there too, not on the command line, which the
 # stock initrd does not read -- see ramdisk-overlay/scripts/halium.
-deviceinfo_kernel_vendor_cmdline="video=vfb:640x400,bpp=32,memsize=3072000 disable_dma32=on bootconfig systempart=/dev/mapper/system"
+# console=tty0: the only console the kernel registers on its own is ramoops,
+# and msm_geni_serial disables the ttyMSM0 one ("Console Disabled"), so
+# /dev/console opens ENODEV. The initrd's validate_init() is `run-init -n`,
+# which opens /dev/console before anything else -- without a console it fails
+# for every init candidate and the initrd panics with "No init found" on a
+# perfectly good rootfs. CONFIG_VT is in, so tty0 is always available.
+deviceinfo_kernel_vendor_cmdline="video=vfb:640x400,bpp=32,memsize=3072000 disable_dma32=on bootconfig console=tty0 systempart=/dev/mapper/system"
 deviceinfo_vendor_bootconfig_path="bootconfig"
 
 ##### Boot image

@@ -55,6 +55,21 @@ if command -v ccache >/dev/null; then
     ccache -z >/dev/null || true
 fi
 
+# make-bootimage.sh applies ramdisk-overlay/ by appending it to the boot ramdisk
+# as a second cpio archive (make-bootimage.sh:194). The kernel concatenated-
+# archive path only works when it can find where one archive ends, and its lz4
+# legacy decompressor consumes the trailing bytes, so with
+# deviceinfo_ramdisk_compression=lz4 the overlay is silently dropped -- no error,
+# no log, and the initrd runs upstream's scripts/halium. mayfly needs the
+# patched one (slot_suffix from bootconfig), so merge the overlay into the base
+# archive instead of appending a second one.
+before="$(sha1sum < build/make-bootimage.sh)"
+sed -i 's#    find \. | cpio -o -H newc | $COMPRESSION_CMD >> "$RAMDISK"#    rm -rf "$TMPDOWN/boot-ramdisk" \&\& mkdir -p "$TMPDOWN/boot-ramdisk" \&\& ( cd "$TMPDOWN/boot-ramdisk" \&\& ${COMPRESSION_CMD%% *} -dc < "$RAMDISK" | cpio -idmu --quiet ) \&\& cp -a "$HERE/ramdisk-overlay"/. "$TMPDOWN/boot-ramdisk"/ \&\& ( cd "$TMPDOWN/boot-ramdisk" \&\& find . | cpio -o -H newc --quiet ) | $COMPRESSION_CMD > "$RAMDISK.new" \&\& mv "$RAMDISK.new" "$RAMDISK"#' build/make-bootimage.sh
+[ "$before" != "$(sha1sum < build/make-bootimage.sh)" ] || {
+    echo "make-bootimage.sh ramdisk-overlay merge patch no longer applies, check upstream" >&2
+    exit 1
+}
+
 # modpost only sees KBUILD_EXTRA_SYMBOLS from a tree's Kbuild, never from its
 # Makefile (scripts/Makefile.modpost prefers Kbuild when both exist). datarmnet-ext
 # sets it in the Makefile only, so rmnet_core's exports are invisible and modpost
