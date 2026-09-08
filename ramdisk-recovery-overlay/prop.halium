@@ -7,8 +7,16 @@ ro.sf.lcd_density=440
 # vendor_dlkm 93M, odm 1.9M -> about 3420 MiB left, short of the 4500 MiB
 # rootfs. UT mounts neither product nor system_ext (mount-android-partitions
 # skips both), so dropping them frees another ~2144 MiB, enough to grow
-# system_a from 1049 MiB to 4500 MiB. Names need the slot suffix or lpremove
-# skips them; missing names are ignored, so the -cow entries are only hit
-# after the device has taken an OTA.
-ro.systemimage.remove_dynparts=product_a,system_ext_a,system_a-cow,system_ext_a-cow,product_a-cow,vendor_a-cow,vendor_dlkm_a-cow,odm_a-cow
+# system_<slot> from 1049 MiB to 4500 MiB.
+#
+# lpremove takes the full partition name; its --slot only picks which copy of
+# the super metadata to rewrite, it is not appended to the name. So both slots
+# have to be listed by name, and the list has to be applied to both metadata
+# copies: LineageOS may sit on either slot (on the 12S it commonly ends up on
+# _b, with _a still holding MIUI), and only the active slot's system grows.
+# Names that do not exist are ignored, so the -cow entries are only hit after
+# the device has taken an OTA. This does drop the other slot's Android
+# product/system_ext, i.e. it stops that slot from booting Android again.
+ro.systemimage.remove_dynparts_slot_a=product_a,system_ext_a,product_b,system_ext_b,system_a-cow,system_b-cow,system_ext_a-cow,system_ext_b-cow,product_a-cow,product_b-cow,vendor_a-cow,vendor_b-cow,vendor_dlkm_a-cow,vendor_dlkm_b-cow,odm_a-cow,odm_b-cow
+ro.systemimage.remove_dynparts_slot_b=product_a,system_ext_a,product_b,system_ext_b,system_a-cow,system_b-cow,system_ext_a-cow,system_ext_b-cow,product_a-cow,product_b-cow,vendor_a-cow,vendor_b-cow,vendor_dlkm_a-cow,vendor_dlkm_b-cow,odm_a-cow,odm_b-cow
 ro.systemimage.system_partition_size=4500

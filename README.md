@@ -49,6 +49,13 @@ Every release also carries `UBports-mayfly-<sha>.zip`, a TWRP zip that streams
 reflashing a new kernel without redoing the whole install. It leaves the rootfs
 alone; see [flashable/README.md](flashable/README.md).
 
+`ramdisk-overlay/scripts/halium` is the prebuilt initrd's own script with one
+change: `androidboot.slot_suffix` is also read from `/proc/bootconfig`. mayfly's
+bootloader passes it there rather than on the command line, and without the
+suffix the initrd never resolves `systempart=/dev/mapper/system` to the active
+slot and the rootfs mount fails. The 12S is happy to keep LineageOS on `_b`, so
+`ramdisk-recovery-overlay/prop.halium` frees space on both slots.
+
 Artifacts: `out/boot.img`, `out/vendor_boot.img`, `out/dtbo.img`,
 `out/ubuntu.img.zst`, `out/device_mayfly.tar.xz`. There is no `out/recovery.img`
 by design -- recovery is merged into `boot.img`
