@@ -6,7 +6,7 @@ release asset `UBports-mayfly-<sha>.zip` is a normal TWRP zip.
 
 It deliberately does not touch the rootfs: `ubuntu.img.zst` goes to `system_a`
 inside `super`, which first has to have `product_a` and `system_ext_a` removed
-and `system_a` grown to 4500M. Halium recovery does that from
+and `system_<slot>` grown to 4500M. Halium recovery does that from
 `ramdisk-recovery-overlay/prop.halium`; TWRP would need `lptools` and a lot
 more care.
 

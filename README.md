@@ -45,7 +45,8 @@ On a Linux box with a case-sensitive filesystem, skip Docker entirely:
     ./build.sh
 
 Every release also carries `UBports-mayfly-<sha>.zip`, a TWRP zip that streams
-`boot.img`, `vendor_boot.img` and `dtbo.img` into the active slot -- for
+`boot.img`, `vendor_boot.img`, `dtbo.img` and `recovery.img` into the active
+slot -- for
 reflashing a new kernel without redoing the whole install. It leaves the rootfs
 alone; see [flashable/README.md](flashable/README.md).
 
@@ -57,9 +58,9 @@ slot and the rootfs mount fails. The 12S is happy to keep LineageOS on `_b`, so
 `ramdisk-recovery-overlay/prop.halium` frees space on both slots.
 
 Artifacts: `out/boot.img`, `out/vendor_boot.img`, `out/dtbo.img`,
-`out/ubuntu.img.zst`, `out/device_mayfly.tar.xz`. There is no `out/recovery.img`
-by design -- recovery is merged into `boot.img`
-(`deviceinfo_use_unified_recovery`).
+`out/ubuntu.img.zst`, `out/device_mayfly.tar.xz` and `out/recovery.img` --
+Halium recovery goes to mayfly's own 100 MiB `recovery_a`/`recovery_b`, not
+into `boot.img`.
 
 ## Verified against stock
 

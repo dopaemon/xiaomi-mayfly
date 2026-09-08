@@ -87,6 +87,16 @@ deviceinfo_dtbo="vendor/qcom/mayfly-sm8475-pm8008-overlay.dtbo"
 
 ##### Recovery
 deviceinfo_use_unified_recovery="true"
+# mayfly is not recovery-as-boot: rawprogram lists recovery_a/recovery_b at
+# 102400 KB each, and the LineageOS BoardConfig has
+# BOARD_RECOVERYIMAGE_PARTITION_SIZE := 0x06400000 with no
+# BOARD_USES_RECOVERY_AS_BOOT. So recovery goes to its own partition rather
+# than being appended to the boot ramdisk -- the appended form is only entered
+# when the bootloader withholds androidboot.force_normal_boot, which a device
+# with a real recovery partition has no reason to do (it would boot straight
+# into recovery every time).
+deviceinfo_has_recovery_partition="true"
+deviceinfo_recovery_partition_size="104857600"
 # TARGET_SCREEN_DENSITY 440
 deviceinfo_unified_recovery_ui_density="xxhdpi"
 

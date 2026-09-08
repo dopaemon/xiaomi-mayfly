@@ -226,7 +226,8 @@ jobs:
           SHA="$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha -q .headSha)"
           echo "SHA=$SHA" >> "$GITHUB_ENV"
           mkdir -p pkg/images
-          cp release/boot.img release/vendor_boot.img release/dtbo.img pkg/images/
+          cp release/boot.img release/vendor_boot.img release/dtbo.img \
+             release/recovery.img pkg/images/
           cp -r repo/flashable/META-INF repo/flashable/README.md pkg/
           (cd pkg && zip -qr "../release/UBports-mayfly-${SHA:0:8}.zip" .)
 
