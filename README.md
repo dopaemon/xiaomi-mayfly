@@ -82,6 +82,17 @@ Values below were read out of `mayfly_images_OS2.0.209.0.VLTCNXM` with
 - the three base DTBs we build (`cape` = Cape SoC, `cape-v2` = Cape LTE Only,
   `capep` = CapeP) match stock entries 0-2 of its 14-DTB blob
 
+`prebuilt/mayfly.dtb` and `prebuilt/dtbo.img` are the stock blobs from
+LineageOS, not built here. ABL matches the 92 stock dtbo overlays against the
+base DTBs in `vendor_boot` by id/rev, and this tree only builds 3 of the 14
+bases plus 1 of the 92 overlays -- flashing either of ours leaves the rest with
+nothing to attach to and the bootloader drops to fastboot. See the comment in
+`deviceinfo` for how to go back to building them.
+
+Flashing by hand needs verification off, or the bootloader rejects our images:
+
+    fastboot --disable-verity --disable-verification flash vbmeta vbmeta.img
+
 ## Still missing
 
 - `overlay/` covers gbinder.conf, deviceinfo yaml, QCOM udev rules, libinput

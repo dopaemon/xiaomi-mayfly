@@ -91,12 +91,23 @@ deviceinfo_bootimg_os_version="12"
 deviceinfo_bootimg_os_patch_level="2025-02"
 deviceinfo_ramdisk_compression="lz4"
 
-# cape/capep = SM8475. Base DTBs from mayfly-sm8475-pm8008-overlay.dtbo-base
-# in sm8450-devicetrees/qcom/Makefile. Paths are relative to
-# KERNEL_OBJ/arch/arm64/boot/dts/ (make-dtboimage.sh:23, make-bootimage.sh:256),
-# and the in-tree symlink puts them under vendor/qcom/.
-deviceinfo_dtb="vendor/qcom/cape.dtb vendor/qcom/cape-v2.dtb vendor/qcom/capep.dtb"
-deviceinfo_dtbo="vendor/qcom/mayfly-sm8475-pm8008-overlay.dtbo"
+# Stock blobs, not ours. ABL matches the dtbo overlays against the base DTBs in
+# vendor_boot by id/rev: stock ships 14 base DTBs and 92 overlays, while the
+# tree here only builds 3 bases (cape = Cape SoC, cape-v2 = Cape LTE Only,
+# capep = CapeP) and the one mayfly overlay. Flashing either of ours leaves the
+# other 89 overlays -- panel, charger, thermal -- with nothing to attach to, and
+# the bootloader gives up and drops to fastboot. Verified on device: our
+# vendor_boot DTB (1136115 B) never boots, the stock blob (6687382 B) always
+# does. Paths are relative to this repo ($HERE in make-bootimage.sh:253,281).
+#
+# To go back to building them, set deviceinfo_dtb/deviceinfo_dtbo below instead
+# -- but the missing base DTBs and overlays have to be built first:
+#   deviceinfo_dtb="vendor/qcom/cape.dtb vendor/qcom/cape-v2.dtb vendor/qcom/capep.dtb"
+#   deviceinfo_dtbo="vendor/qcom/mayfly-sm8475-pm8008-overlay.dtbo"
+# (those paths are relative to KERNEL_OBJ/arch/arm64/boot/dts/, where the
+# in-tree symlink puts them under vendor/qcom/.)
+deviceinfo_bootimg_prebuilt_dtb="prebuilt/mayfly.dtb"
+deviceinfo_prebuilt_dtbo="prebuilt/dtbo.img"
 
 ##### Recovery
 deviceinfo_use_unified_recovery="true"

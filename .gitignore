@@ -3,3 +3,4 @@ workdir/
 out/
 *.zip
 .ccache/
+.DS_Store
