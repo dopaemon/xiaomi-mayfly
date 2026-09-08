@@ -109,6 +109,21 @@ deviceinfo_ramdisk_compression="lz4"
 deviceinfo_bootimg_prebuilt_dtb="prebuilt/mayfly.dtb"
 deviceinfo_prebuilt_dtbo="prebuilt/dtbo.img"
 
+##### vendor_dlkm
+# The stock vendor_dlkm holds 391 modules built against 5.10.245-g992742f9cdcc,
+# and Android's second stage loads them from /vendor_dlkm/lib/modules. Against
+# our kernel every one of them fails vermagic/CRC checks:
+#   mdt_loader: Unknown symbol request_firmware_into_buf (err -22)
+#   qmi_helpers: Unknown symbol sock_release (err -22)
+# msm_drm never loads, so there is no DRM device and
+# vendor.qti.hardware.display.composer segfaults in sdm::HWCSession::Init()
+# on the null display handle -- IComposer is never registered, and Ubuntu
+# Touch's unity-system-compositor waits for a hwcomposer that cannot appear.
+# Building the partition from our own module tree is what fixes it; the 100
+# first-stage modules are excluded, they are already in the vendor ramdisk.
+deviceinfo_kernel_build_vendor_dlkm="true"
+deviceinfo_vendor_kernel_boot_modules="vendor-ramdisk-overlay/lib/modules/modules.load"
+
 ##### Recovery
 deviceinfo_use_unified_recovery="true"
 # mayfly is not recovery-as-boot: rawprogram lists recovery_a/recovery_b at

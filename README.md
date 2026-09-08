@@ -63,6 +63,13 @@ Unpack it into `/cache/recovery` over adb and reboot to recovery: `ubupdater`
 finds `ubuntu_command` and runs `system-image-upgrader`, which is what resizes
 `system` in super and unpacks the rootfs.
 
+`out/vendor_dlkm.img` holds the second-stage modules built against our kernel
+(`deviceinfo_kernel_build_vendor_dlkm`). The stock `vendor_dlkm` is built for
+5.10.245 and every insmod against ours fails vermagic, so `msm_drm` never loads
+and the QTI composer segfaults on a null display -- black screen. It is a
+logical partition inside `super`, so flash it from the TWRP zip or with
+`dd of=/dev/block/mapper/vendor_dlkm_b`, not with plain fastboot.
+
 Artifacts: `out/boot.img`, `out/vendor_boot.img`, `out/dtbo.img`,
 `out/ubuntu.img.zst`, `out/device_mayfly.tar.xz` and `out/recovery.img` --
 Halium recovery goes to mayfly's own 100 MiB `recovery_a`/`recovery_b`, not
