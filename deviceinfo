@@ -25,14 +25,15 @@ deviceinfo_kernel_clang_revision="r450784e"
 deviceinfo_kernel_image_name="Image"
 # A fragment containing "/" is resolved relative to the downloads dir, not to
 # arch/arm64/configs (build-kernel.sh), so the vendor ones need the full path.
-# The same rule lets ../selinux.config reach this repo, which sits one level
-# above workdir/; it has to come after halium.config to undo its LSM ordering.
+# The same rule lets ../../selinux.config reach this repo: fragments resolve
+# relative to workdir/downloads/, and this repo is workdir's parent, two
+# levels up. Has to come after halium.config to undo its LSM ordering.
 deviceinfo_kernel_defconfig="gki_defconfig \
     android_kernel_xiaomi_common/arch/arm64/configs/vendor/waipio_GKI.config \
     android_kernel_xiaomi_common/arch/arm64/configs/vendor/xiaomi_GKI.config \
     android_kernel_xiaomi_common/arch/arm64/configs/vendor/mayfly_GKI.config \
     halium.config \
-    ../selinux.config"
+    ../../selinux.config"
 
 # Same set and order as TARGET_KERNEL_EXT_MODULES in sm8450-common/BoardConfigCommon.mk
 deviceinfo_kernel_external_modules="
