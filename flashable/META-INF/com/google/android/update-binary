@@ -1,0 +1,69 @@
+#!/sbin/sh
+# TWRP flashable zip for the boot chain. Structure follows the usual Ubuntu
+# Touch flashable zips (update-binary is the script, updater-script a dummy),
+# but nothing is unpacked to disk: every image is streamed straight from the
+# zip into its partition, so recovery needs no free space and the zip carries
+# no busybox.
+#
+# Only boot/vendor_boot/dtbo. The rootfs still goes through Halium recovery and
+# the UT installer, which is what removes product_a/system_ext_a from super and
+# grows system_a (see ramdisk-recovery-overlay/prop.halium); doing that from
+# TWRP would need lptools and is not worth the risk.
+
+OUTFD=/proc/self/fd/$2
+ZIP="$3"
+
+ui_print() {
+  until [ ! "$1" ]; do
+    echo -e "ui_print $1\nui_print" > $OUTFD
+    shift
+  done
+}
+show_progress() { echo "progress $1 $2" > $OUTFD; }
+abort() { ui_print "$*"; exit 1; }
+
+show_progress 1.0 3
+ui_print " "
+ui_print "    _   _ ____                _        "
+ui_print "   | | | | __ ) _ __  ___ _ _| |_ ___  "
+ui_print "   | | | |  _ \| '_ \/ _ \ '_| __/ __| "
+ui_print "   | |_| | |_) | |_) | (_) | | | |_\__ \\"
+ui_print "    \___/|____/| .__/ \___/|_|  \__|___/"
+ui_print "               |_|                     "
+ui_print " "
+ui_print " Ubuntu Touch / Halium 16 - Xiaomi 12S (mayfly)"
+ui_print " "
+
+# A/B device: TWRP exports the slot it is running from. Without it we would
+# happily write the inactive slot and the phone would boot the old kernel.
+SLOT=$(getprop ro.boot.slot_suffix)
+[ -n "$SLOT" ] || SLOT=$(grep -o 'androidboot.slot_suffix=[^ ]*' /proc/cmdline | cut -d= -f2)
+[ -n "$SLOT" ] || abort " Cannot tell which slot is active. Aborting."
+ui_print " Active slot: ${SLOT#_}"
+
+flash() {
+  name="$1"
+  part="$2"
+  target="/dev/block/bootdevice/by-name/${part}${SLOT}"
+  [ -e "$target" ] || target="/dev/block/by-name/${part}${SLOT}"
+  [ -e "$target" ] || abort " ${part}${SLOT} not found. Aborting."
+  unzip -l "$ZIP" "images/$name" > /dev/null 2>&1 || abort " $name missing from zip. Aborting."
+  ui_print " Flashing $name -> ${part}${SLOT}"
+  # boot.img and vendor_boot.img are padded to the full partition size at build
+  # time, so their AVB footer lands where the bootloader looks for it. dtbo.img
+  # is not, which is fine only because this port is flashed with verification
+  # off.
+  unzip -p "$ZIP" "images/$name" | dd of="$target" bs=1M || abort " Writing $name failed. Aborting."
+}
+
+flash boot.img boot
+show_progress 0.3 1
+flash vendor_boot.img vendor_boot
+show_progress 0.3 1
+flash dtbo.img dtbo
+show_progress 0.3 1
+
+ui_print " "
+ui_print " Done. Reboot to recovery to install the rootfs,"
+ui_print " or just reboot if it is already installed."
+ui_print " "

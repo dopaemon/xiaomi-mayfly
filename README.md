@@ -44,6 +44,11 @@ On a Linux box with a case-sensitive filesystem, skip Docker entirely:
 
     ./build.sh
 
+Every release also carries `UBports-mayfly-<sha>.zip`, a TWRP zip that streams
+`boot.img`, `vendor_boot.img` and `dtbo.img` into the active slot -- for
+reflashing a new kernel without redoing the whole install. It leaves the rootfs
+alone; see [flashable/README.md](flashable/README.md).
+
 Artifacts: `out/boot.img`, `out/vendor_boot.img`, `out/dtbo.img`,
 `out/ubuntu.img.zst`, `out/device_mayfly.tar.xz`. There is no `out/recovery.img`
 by design -- recovery is merged into `boot.img`

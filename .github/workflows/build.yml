@@ -215,15 +215,29 @@ jobs:
           run-id: ${{ inputs.publish_run_id || github.run_id }}
           github-token: ${{ github.token }}
 
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+
+      # TWRP zip for reflashing the boot chain without the full installer.
+      # zip stores update-binary's exec bit, which recovery needs.
+      - name: Package the flashable zip
+        run: |
+          SHA="$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha -q .headSha)"
+          echo "SHA=$SHA" >> "$GITHUB_ENV"
+          mkdir -p pkg/images
+          cp release/boot.img release/vendor_boot.img release/dtbo.img pkg/images/
+          cp -r repo/flashable/META-INF repo/flashable/README.md pkg/
+          (cd pkg && zip -qr "../release/UBports-mayfly-${SHA:0:8}.zip" .)
+
       - name: Publish
         run: |
           cp build-out/device_*.tar.xz build-out/Module.symvers release/ 2>/dev/null || true
           # Hard link of the same tarball, no point uploading it twice.
           rm -f release/*_usrmerge.tar.xz
           ls -la release/
-          # Must be the full sha: the releases API rejects an abbreviated
-          # target_commitish with 422.
-          SHA="$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha -q .headSha)"
+          # $SHA comes from the packaging step and must be the full sha: the
+          # releases API rejects an abbreviated target_commitish with 422.
           TAG="ci-$RUN_ID"
           gh release create "$TAG" release/* \
             --repo "$GITHUB_REPOSITORY" \
