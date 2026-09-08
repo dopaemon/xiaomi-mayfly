@@ -22,11 +22,11 @@ CI is manual: run the `build` workflow from the Actions tab, or
 
     gh workflow run build --repo dopaemon/xiaomi-mayfly
 
-Images land on a `ci-<run>` release. Pass `-f flashable=true` to also build
+Images land on a `ci-<run id>` release. Pass `-f flashable=true` to also build
 `system.img` from the latest devel OTA. To publish an older run's artifacts
 without rebuilding:
 
-    gh workflow run release --repo dopaemon/xiaomi-mayfly -f run_id=<id>
+    gh workflow run build --repo dopaemon/xiaomi-mayfly -f publish_run_id=<id>
 
 Locally, Docker gives the same ubuntu:22.04 environment CI uses -- needed on
 macOS, where APFS is case-insensitive and the kernel tree will not check out:
