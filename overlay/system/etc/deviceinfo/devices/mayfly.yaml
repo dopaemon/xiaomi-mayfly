@@ -1,6 +1,6 @@
 mayfly:
   Name: mayfly
-  PrettyName: Xiaomi 12S Pro
+  PrettyName: Xiaomi 12S
   Vendor: Xiaomi
   DeviceType: phone
   # 8 * TARGET_SCREEN_DENSITY / 160, density from BoardConfig.mk:23
