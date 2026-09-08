@@ -1,4 +1,4 @@
-# Mirror of .gitlab-ci.yml (upstream gsi-port-ci.yml) for GitHub Actions.
+# Port of the upstream gsi-port-ci.yml pipeline to GitHub Actions.
 # Same three stages: build -> devel-flashable / flashable, plus a release job
 # because GitHub artifacts expire and are zipped; the images are published as
 # release assets instead.
@@ -135,7 +135,7 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-  # The GitLab job is `when: manual`; here it runs only when the workflow is
+  # The upstream job is `when: manual`; here it runs only when the workflow is
   # dispatched with flashable=true.
   flashable:
     if: inputs.flashable
