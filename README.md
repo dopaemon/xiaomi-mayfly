@@ -1,8 +1,8 @@
-# Ubuntu Touch for Xiaomi 12S Pro (mayfly)
+# Ubuntu Touch for Xiaomi 12S (mayfly)
 
-Halium 16 port. Built by `halium-generic-adaptation-build-tools`; nothing here
-is compiled locally on macOS (the kernel tree needs a case-sensitive
-filesystem).
+Halium 16 port, built by `halium-generic-adaptation-build-tools`. The kernel
+tree needs a case-sensitive filesystem, so on macOS it builds in Docker (see
+[Build](#build)), never on APFS directly.
 
 ## Sources
 
@@ -18,12 +18,32 @@ Both extra repos are cloned next to the kernel as `sm8450-devicetrees` and
 
 ## Build
 
-Push to GitLab and let CI run it, or on a Linux box with a case-sensitive FS:
+CI is manual: run the `build` workflow from the Actions tab, or
+
+    gh workflow run build --repo dopaemon/xiaomi-mayfly
+
+Images land on a `ci-<run>` release. Pass `-f flashable=true` to also build
+`system.img` from the latest devel OTA.
+
+Locally, Docker gives the same ubuntu:22.04 environment CI uses -- needed on
+macOS, where APFS is case-insensitive and the kernel tree will not check out:
+
+    docker compose build            # once, to create the image
+    docker compose run --rm build
+
+`workdir/` (kernel plus 18 module trees, ~30 GB) lives in a named volume;
+`out/` is bind-mounted, so artifacts appear in the checkout. To start over:
+
+    docker compose down -v
+
+On a Linux box with a case-sensitive filesystem, skip Docker entirely:
 
     ./build.sh
 
 Artifacts: `out/boot.img`, `out/vendor_boot.img`, `out/dtbo.img`,
-`out/recovery.img`, `out/ubuntu.img`.
+`out/ubuntu.img.zst`, `out/device_mayfly.tar.xz`. There is no `out/recovery.img`
+by design -- recovery is merged into `boot.img`
+(`deviceinfo_use_unified_recovery`).
 
 ## Verified against stock
 
@@ -41,9 +61,15 @@ Values below were read out of `mayfly_images_OS2.0.209.0.VLTCNXM` with
 
 ## Still missing
 
-- `overlay/` — gbinder.conf, ofono binder config, udev rules, deviceinfo yaml,
-  usb-moded config. Written after first boot, per subsystem.
+- `overlay/` covers gbinder.conf, deviceinfo yaml, QCOM udev rules, libinput
+  quirks and the lxc-android-config overrides. RIL (`ofono/binder.d`), MTP
+  (usb-moded/umtprd) and USB tethering are written after first boot.
 - `vendor-ramdisk-overlay/lib/modules/modules.load` is the kernel's own
   `modules.list.msm.waipio` (100 modules). Stock loads 12 more Xiaomi-specific
   ones (`bootinfo`, `mi_memory`, `mi_power`, `metis`, `swinfo`, ...); add them
   if something is missing at first stage.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The build tools and the kernel keep their own
+licenses.

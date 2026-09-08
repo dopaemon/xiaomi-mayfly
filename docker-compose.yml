@@ -1,0 +1,17 @@
+services:
+  build:
+    build: .
+    image: xiaomi-mayfly-build
+    # system-image-from-ota.sh mounts the rootfs image through a loop device,
+    # which needs both the device nodes and CAP_SYS_ADMIN.
+    privileged: true
+    volumes:
+      - .:/src
+      # Kernel and module trees are ~30 GB of checkout and objects; keeping
+      # them in a named volume survives `docker compose down` and stays off
+      # the macOS bind mount, which is far too slow for a kernel build.
+      - workdir:/src/workdir
+    working_dir: /src
+
+volumes:
+  workdir:

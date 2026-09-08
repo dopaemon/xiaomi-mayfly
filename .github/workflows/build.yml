@@ -4,9 +4,9 @@
 # release assets instead.
 name: build
 
+# Manual only: a full run is ~2h of compute, and most pushes here touch
+# overlay files that no build depends on.
 on:
-  push:
-    branches: [ halium-16.0 ]
   workflow_dispatch:
     inputs:
       flashable:
