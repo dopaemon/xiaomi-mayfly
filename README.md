@@ -57,6 +57,12 @@ suffix the initrd never resolves `systempart=/dev/mapper/system` to the active
 slot and the rootfs mount fails. The 12S is happy to keep LineageOS on `_b`, so
 `ramdisk-recovery-overlay/prop.halium` frees space on both slots.
 
+`ota.tar` in the release is the OTA set the recovery installs from
+(`ubuntu_command` plus the rootfs, Halium GSI, device and version tarballs).
+Unpack it into `/cache/recovery` over adb and reboot to recovery: `ubupdater`
+finds `ubuntu_command` and runs `system-image-upgrader`, which is what resizes
+`system` in super and unpacks the rootfs.
+
 Artifacts: `out/boot.img`, `out/vendor_boot.img`, `out/dtbo.img`,
 `out/ubuntu.img.zst`, `out/device_mayfly.tar.xz` and `out/recovery.img` --
 Halium recovery goes to mayfly's own 100 MiB `recovery_a`/`recovery_b`, not

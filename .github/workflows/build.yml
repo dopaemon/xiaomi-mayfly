@@ -122,6 +122,10 @@ jobs:
           mv out/rootfs.img out/ubuntu.img
           zstd --ultra -22 -T0 out/ubuntu.img
           rm -f out/ubuntu.img out/system.img
+          # The same OTA set the recovery installs from: push it to
+          # /cache/recovery and system-image-upgrader picks up ubuntu_command
+          # on the next recovery boot. Already xz-compressed, so store only.
+          tar -cf out/ota.tar -C ota .
 
       - uses: actions/upload-artifact@v4
         with:
@@ -131,6 +135,7 @@ jobs:
             out/dtbo.img
             out/recovery.img
             out/ubuntu.img.zst
+            out/ota.tar
           retention-days: 7
           compression-level: 0
           if-no-files-found: error
