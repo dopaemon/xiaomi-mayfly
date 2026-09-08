@@ -1,0 +1,190 @@
+# Mirror of .gitlab-ci.yml (upstream gsi-port-ci.yml) for GitHub Actions.
+# Same three stages: build -> devel-flashable / flashable, plus a release job
+# because GitHub artifacts expire and are zipped; the images are published as
+# release assets instead.
+name: build
+
+on:
+  push:
+    branches: [ halium-16.0 ]
+  workflow_dispatch:
+    inputs:
+      flashable:
+        description: "Also build system.img from the latest devel OTA (the manual 'flashable' stage)"
+        type: boolean
+        default: false
+
+# One build per branch: the kernel plus 18 module trees is a ~2h job, no point
+# running two of them for two pushes a minute apart.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ADAPTATION_TOOLS_BRANCH: personal/notkit/build-kleaf-modules
+
+jobs:
+  build:
+    # jammy to match `image: ubuntu:22.04` upstream: noble has neither
+    # libtinfo5 nor python2, both of which the kernel build tools want.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner ships with ~25 GB of toolchains we never use, and the
+      # kernel plus module trees plus the 4.5G rootfs image do not fit without
+      # them gone.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison build-essential ca-certificates cpio curl fakeroot flex \
+            git kmod libelf-dev libssl-dev libtinfo5 lz4 python2 python3 \
+            rsync sudo unzip wget xz-utils pahole libbpf-dev
+          sudo ln -sf python2 /usr/bin/python
+
+      # ADAPTATION_TOOLS_USE_BUILD_WRAPPER=1 upstream: our build.sh clones the
+      # tools itself (BUILD_TOOLS_BRANCH) and patches them before building.
+      - name: Build
+        run: BUILD_TOOLS_BRANCH="$ADAPTATION_TOOLS_BRANCH" ./build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: out/*
+          retention-days: 7
+          # Everything in out/ is already compressed.
+          compression-level: 0
+
+  devel-flashable:
+    runs-on: ubuntu-22.04
+    needs: build
+    continue-on-error: true   # allow_failure: true
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: out
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git img2simg jq sudo wget xz-utils zstd
+
+      - name: Build rootfs from the device tarball
+        run: |
+          git clone -b "$ADAPTATION_TOOLS_BRANCH" \
+            https://gitlab.com/ubports/porting/community-ports/halium-generic-adaptation-build-tools.git build
+          DEVICE="$(source ./deviceinfo && echo "$deviceinfo_codename")"
+          ./build/prepare-fake-ota.sh "out/device_${DEVICE}.tar.xz" ota
+          mkdir -p out
+          ./build/system-image-from-ota.sh ota/ubuntu_command out
+          mv out/rootfs.img out/ubuntu.img
+          zstd --ultra -22 -T0 out/ubuntu.img
+          rm -f out/ubuntu.img out/system.img
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devel-flashable
+          path: |
+            out/*boot.img
+            out/dtbo.img
+            out/recovery.img
+            out/ubuntu.img.zst
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+
+  # The GitLab job is `when: manual`; here it runs only when the workflow is
+  # dispatched with flashable=true.
+  flashable:
+    if: inputs.flashable
+    runs-on: ubuntu-22.04
+    needs: build
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: out
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git img2simg jq sudo wget xz-utils
+
+      - name: Build system.img from the latest devel OTA
+        run: |
+          git clone -b "$ADAPTATION_TOOLS_BRANCH" \
+            https://gitlab.com/ubports/porting/community-ports/halium-generic-adaptation-build-tools.git build
+          DEVICE="$(source ./deviceinfo && echo "$deviceinfo_codename")"
+          ./build/fetch-and-prepare-latest-ota.sh "20.04/arm64/android9plus/devel" "$DEVICE" ota
+          mkdir -p out
+          ./build/system-image-from-ota.sh ota/ubuntu_command out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flashable
+          path: |
+            out/boot.img
+            out/init_boot.img
+            out/vendor_boot.img
+            out/system.img
+            out/dtbo.img
+          retention-days: 7
+          compression-level: 0
+
+  release:
+    runs-on: ubuntu-22.04
+    needs: devel-flashable
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: devel-flashable
+          path: release
+
+      # Also ship the device tarball, which is what the UT installer consumes.
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: build-out
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build-out/device_*.tar.xz release/ 2>/dev/null || true
+          TAG="ci-${{ github.run_number }}"
+          # Re-runs reuse the tag, so fall back to overwriting the assets.
+          gh release create "$TAG" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG (${GITHUB_SHA::8})" \
+            --notes "Halium 16 / Ubuntu Touch 24.04 build of ${GITHUB_SHA::8}." \
+          || gh release upload "$TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
