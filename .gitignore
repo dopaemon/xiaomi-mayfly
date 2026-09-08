@@ -2,3 +2,4 @@ build/
 workdir/
 out/
 *.zip
+.ccache/

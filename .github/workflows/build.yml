@@ -59,10 +59,12 @@ jobs:
       # unchanged between runs: the sources come from pinned branches and only
       # this repo's config normally moves. Cannot cache the checkouts instead --
       # workdir/ is ~30 GB against a 10 GB cache limit.
+      # Absolute path on both sides: actions/cache expands ~, ccache does not,
+      # so a tilde in CCACHE_DIR lands the cache in a literal "~" directory.
       - name: Restore ccache
         uses: actions/cache@v4
         with:
-          path: ~/.ccache
+          path: ${{ github.workspace }}/.ccache
           key: ccache-${{ github.sha }}
           restore-keys: ccache-
 
@@ -71,7 +73,7 @@ jobs:
       - name: Build
         env:
           BUILD_TOOLS_BRANCH: ${{ env.ADAPTATION_TOOLS_BRANCH }}
-          CCACHE_DIR: ~/.ccache
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
           # GitHub evicts a repo's caches past 10 GB total; leave room for the
           # older entries restore-keys falls back to.
           CCACHE_MAXSIZE: 4G
