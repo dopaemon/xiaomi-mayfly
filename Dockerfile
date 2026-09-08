@@ -8,7 +8,7 @@ RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       bc bison build-essential ca-certificates cpio curl fakeroot flex git \
       img2simg jq kmod libbpf-dev libelf-dev libssl-dev libtinfo5 lz4 pahole \
-      python2 python3 rsync sudo unzip wget xz-utils zstd \
+      python2 python3 rsync sudo unzip wget xz-utils zstd ccache \
  && ln -sf python2 /usr/bin/python \
  && rm -rf /var/lib/apt/lists/*
 

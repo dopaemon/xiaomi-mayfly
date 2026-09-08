@@ -32,6 +32,29 @@ sed -i 's|m_rel="$(realpath |m_rel="$(realpath -s |' build/build-kernel.sh
     exit 1
 }
 
+# Kernel plus 18 module trees is ~35 min of clang. build.sh rebuilds PATH from
+# scratch for the LLVM branch (ALLOWED_HOST_TOOLS + the prebuilt toolchains), so
+# a ccache in the ambient PATH is simply not seen. Hand it an extra directory
+# instead, holding the usual ccache masquerade symlinks: ccache skips its own
+# directory when resolving the real compiler, so it still finds the prebuilt
+# clang further down the same PATH. No ccache installed -> CCACHE_SHIM stays
+# empty and the substitution expands to nothing.
+if command -v ccache >/dev/null; then
+    CCACHE_SHIM="$(pwd)/workdir/ccache-shim"
+    mkdir -p "$CCACHE_SHIM"
+    for tool in clang clang++; do
+        ln -sf "$(command -v ccache)" "$CCACHE_SHIM/$tool"
+    done
+    export CCACHE_SHIM
+    before="$(sha1sum < build/build.sh)"
+    sed -i 's|PATH="$CLANG_PATH/bin:|PATH="${CCACHE_SHIM:+${CCACHE_SHIM}:}$CLANG_PATH/bin:|' build/build.sh
+    [ "$before" != "$(sha1sum < build/build.sh)" ] || {
+        echo "build.sh PATH patch no longer applies, check upstream" >&2
+        exit 1
+    }
+    ccache -z >/dev/null || true
+fi
+
 # modpost only sees KBUILD_EXTRA_SYMBOLS from a tree's Kbuild, never from its
 # Makefile (scripts/Makefile.modpost prefers Kbuild when both exist). datarmnet-ext
 # sets it in the Makefile only, so rmnet_core's exports are invisible and modpost
@@ -45,3 +68,6 @@ done
 export KBUILD_EXTRA_SYMBOLS
 
 ./build/build.sh "$@"
+
+# set -e: the guard must not be the failing last command
+command -v ccache >/dev/null && ccache -s | head -5 || true

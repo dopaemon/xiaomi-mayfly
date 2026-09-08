@@ -11,7 +11,14 @@ services:
       # them in a named volume survives `docker compose down` and stays off
       # the macOS bind mount, which is far too slow for a kernel build.
       - workdir:/src/workdir
+      # Survives `docker compose down`, so a rebuild after an unrelated change
+      # only recompiles what actually changed.
+      - ccache:/root/.ccache
     working_dir: /src
+    environment:
+      CCACHE_DIR: /root/.ccache
+      CCACHE_MAXSIZE: 10G
 
 volumes:
   workdir:
+  ccache:

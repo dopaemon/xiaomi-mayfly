@@ -47,13 +47,31 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             bc bison build-essential ca-certificates cpio curl fakeroot flex \
             git kmod libelf-dev libssl-dev libtinfo5 lz4 python2 python3 \
-            rsync sudo unzip wget xz-utils pahole libbpf-dev
+            rsync sudo unzip wget xz-utils pahole libbpf-dev ccache
           sudo ln -sf python2 /usr/bin/python
+
+      # Kernel plus 18 module trees is ~35 min of clang, nearly all of it
+      # unchanged between runs: the sources come from pinned branches and only
+      # this repo's config normally moves. Cannot cache the checkouts instead --
+      # workdir/ is ~30 GB against a 10 GB cache limit.
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ github.sha }}
+          restore-keys: ccache-
 
       # ADAPTATION_TOOLS_USE_BUILD_WRAPPER=1 upstream: our build.sh clones the
       # tools itself (BUILD_TOOLS_BRANCH) and patches them before building.
       - name: Build
-        run: BUILD_TOOLS_BRANCH="$ADAPTATION_TOOLS_BRANCH" ./build.sh
+        env:
+          BUILD_TOOLS_BRANCH: ${{ env.ADAPTATION_TOOLS_BRANCH }}
+          CCACHE_DIR: ~/.ccache
+          # GitHub evicts a repo's caches past 10 GB total; leave room for the
+          # older entries restore-keys falls back to.
+          CCACHE_MAXSIZE: 4G
+          CCACHE_COMPRESS: "1"
+        run: ./build.sh
 
       - uses: actions/upload-artifact@v4
         with:
@@ -177,7 +195,9 @@ jobs:
 
       - name: Publish
         env:
-          GH_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN gets HTTP 403 on POST /releases in this repo even with
+          # contents: write, so honour a RELEASE_TOKEN PAT when one is set.
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
         run: |
           cp build-out/device_*.tar.xz release/ 2>/dev/null || true
           TAG="ci-${{ github.run_number }}"

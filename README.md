@@ -23,7 +23,10 @@ CI is manual: run the `build` workflow from the Actions tab, or
     gh workflow run build --repo dopaemon/xiaomi-mayfly
 
 Images land on a `ci-<run>` release. Pass `-f flashable=true` to also build
-`system.img` from the latest devel OTA.
+`system.img` from the latest devel OTA. To publish an older run's artifacts
+without rebuilding:
+
+    gh workflow run release --repo dopaemon/xiaomi-mayfly -f run_id=<id>
 
 Locally, Docker gives the same ubuntu:22.04 environment CI uses -- needed on
 macOS, where APFS is case-insensitive and the kernel tree will not check out:
@@ -31,8 +34,9 @@ macOS, where APFS is case-insensitive and the kernel tree will not check out:
     docker compose build            # once, to create the image
     docker compose run --rm build
 
-`workdir/` (kernel plus 18 module trees, ~30 GB) lives in a named volume;
-`out/` is bind-mounted, so artifacts appear in the checkout. To start over:
+`workdir/` (kernel plus 18 module trees, ~30 GB) and the ccache live in named
+volumes; `out/` is bind-mounted, so artifacts appear in the checkout. The first
+build is ~40 minutes, later ones far less because ccache is warm. To start over:
 
     docker compose down -v
 

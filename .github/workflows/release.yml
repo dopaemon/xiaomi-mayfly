@@ -39,7 +39,9 @@ jobs:
 
       - name: Publish
         env:
-          GH_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN gets HTTP 403 on POST /releases in this repo even with
+          # contents: write, so honour a RELEASE_TOKEN PAT when one is set.
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
         run: |
           cp build-out/device_*.tar.xz release/ 2>/dev/null || true
           ls -la release/
