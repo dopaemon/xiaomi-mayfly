@@ -1,0 +1,14 @@
+# TARGET_SCREEN_DENSITY in the device tree; without it recovery falls back to
+# 160 and picks the 1x assets.
+ro.sf.lcd_density=440
+
+# super is 8912896 KB = 8704 MiB (rawprogram, label="super"). LineageOS 23.0
+# fills it with system 1.1G, vendor 2.1G, product 1.7G, system_ext 548M,
+# vendor_dlkm 93M, odm 1.9M -> about 3420 MiB left, short of the 4500 MiB
+# rootfs. UT mounts neither product nor system_ext (mount-android-partitions
+# skips both), so dropping them frees another ~2144 MiB, enough to grow
+# system_a from 1049 MiB to 4500 MiB. Names need the slot suffix or lpremove
+# skips them; missing names are ignored, so the -cow entries are only hit
+# after the device has taken an OTA.
+ro.systemimage.remove_dynparts=product_a,system_ext_a,system_a-cow,system_ext_a-cow,product_a-cow,vendor_a-cow,vendor_dlkm_a-cow,odm_a-cow
+ro.systemimage.system_partition_size=4500
