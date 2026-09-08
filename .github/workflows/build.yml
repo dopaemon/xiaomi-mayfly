@@ -61,8 +61,10 @@ jobs:
       # workdir/ is ~30 GB against a 10 GB cache limit.
       # Absolute path on both sides: actions/cache expands ~, ccache does not,
       # so a tilde in CCACHE_DIR lands the cache in a literal "~" directory.
+      # Split restore/save so a failed build still keeps what it compiled;
+      # actions/cache only saves when the job succeeds.
       - name: Restore ccache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ github.workspace }}/.ccache
           key: ccache-${{ github.sha }}
@@ -79,6 +81,13 @@ jobs:
           CCACHE_MAXSIZE: 4G
           CCACHE_COMPRESS: "1"
         run: ./build.sh
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-${{ github.run_id }}
 
       - uses: actions/upload-artifact@v4
         with:

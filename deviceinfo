@@ -66,6 +66,9 @@ deviceinfo_flash_pagesize="4096"
 deviceinfo_flash_offset_base="0x00000000"
 deviceinfo_flash_offset_kernel="0x00008000"
 deviceinfo_flash_offset_ramdisk="0x01000000"
+# Unused by header v4, but make-bootimage.sh passes it verbatim when building
+# recovery.img as a header v2 image.
+deviceinfo_flash_offset_second="0x00000000"
 deviceinfo_flash_offset_tags="0x00000100"
 deviceinfo_flash_offset_dtb="0x01f00000"
 # BOARD_BOOTIMAGE_PARTITION_SIZE 0x0C000000
