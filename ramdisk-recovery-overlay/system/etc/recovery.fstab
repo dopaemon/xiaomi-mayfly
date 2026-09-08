@@ -1,0 +1,12 @@
+# Android fstab file.
+# Paths taken from the stock vendor_boot fstab.qcom. mayfly launched on
+# Android 12, so there is no init_boot partition.
+#
+#<src>                                    <mnt_point>     <type>  <mnt_flags and options>       <fs_mgr_flags>
+/dev/block/bootdevice/by-name/boot        /boot           emmc    defaults                      slotselect,avb=boot,first_stage_mount
+/dev/block/bootdevice/by-name/vendor_boot /vendor_boot    emmc    defaults                      slotselect,avb=vendor_boot,first_stage_mount
+/dev/block/bootdevice/by-name/dtbo        /dtbo           emmc    defaults                      slotselect,avb=dtbo,first_stage_mount
+/dev/block/bootdevice/by-name/vbmeta      /vbmeta         emmc    defaults                      slotselect,first_stage_mount
+/dev/block/bootdevice/by-name/misc        /misc           emmc    defaults                      defaults
+/dev/block/by-name/metadata               /metadata       ext4    noatime,nosuid,nodev,discard  wait,check,formattable,first_stage_mount
+/dev/block/bootdevice/by-name/userdata    /data           f2fs    noatime,nosuid,nodev,discard,reserve_root=32768,resgid=1065,fsync_mode=nobarrier,inlinecrypt latemount,wait,check,formattable,quota,reservedsize=128M
