@@ -10,6 +10,7 @@ exec >>/userdata/mayfly-usbnet.log 2>&1
 
 G=/sys/kernel/config/usb_gadget/mayfly
 DEV_IP=10.15.19.82/24
+DEV_MAC=02:1a:11:00:00:01
 
 mountpoint -q /sys/kernel/config || mount -t configfs none /sys/kernel/config
 
@@ -31,8 +32,16 @@ ln -sfn "$G/functions/ecm.usb0" "$G/configs/c.1/ecm.usb0"
 # controller back for as long as the service runs.
 while :; do
     if [ -n "$(cat "$G/UDC" 2>/dev/null)" ]; then
-        ip addr replace $DEV_IP dev usb0 2>/dev/null
-        ip link set usb0 up 2>/dev/null
+        # Never assume "usb0": once udevd is up it renames the ECM netdev by
+        # its MAC (enx021a11000001), and a faster boot is enough to change
+        # which side of that race we are on. configfs knows the real name.
+        IF=$(cat "$G/functions/ecm.usb0/ifname" 2>/dev/null)
+        if [ -n "$IF" ]; then
+            REAL=$(ip -o link show | awk -v m="$DEV_MAC" '$0 ~ m { sub(":$", "", $2); print $2; exit }')
+            [ -n "$REAL" ] && IF=$REAL
+            ip addr replace $DEV_IP dev "$IF" 2>/dev/null
+            ip link set "$IF" up 2>/dev/null
+        fi
         sleep 10
         continue
     fi
