@@ -140,11 +140,16 @@ ssh and only then folded into `overlay/`.
 - `overlay/` covers gbinder.conf, deviceinfo yaml, QCOM udev rules, libinput
   quirks and the lxc-android-config overrides. RIL (`ofono/binder.d`), MTP
   (usb-moded/umtprd) and USB tethering are written after first boot.
-- AppArmor cannot run on this kernel (see `selinux.config`), so
-  `overlay/system/usr/bin/aa-exec` replaces the packaged binary with a wrapper
-  that drops the confinement options: without it `aa-exec` aborts and no click
-  app can start at all. Click apps therefore run unconfined. Legacy apps never
-  went through it and were unaffected.
+- AppArmor is the LSM again. It had been disabled by making SELinux the
+  exclusive one, purely so stock `vndservicemanager` -- which aborts on
+  `CHECK(selinux_status_open(true) >= 0)` without selinuxfs -- would start at
+  all. That took click app confinement with it: `lomiri-app-launch` runs click
+  apps through `aa-exec`, which then always failed with "AppArmor interface not
+  available". The fix is upstream's: preload `libselinux_stubs.so`, shipped in
+  `/system/lib64`, via
+  `overlay/system/usr/share/halium-overlay/vendor/etc/init/vndservicemanager.rc`,
+  which lxc-android-config's `mount-halium-overlay` binds over
+  `/vendor/etc/init/` before the container starts.
 - The telephony handler needs `media.swcodec`, which lives in a compressed APEX
   (`.capex`). `mount-android-partitions` now decompresses those once into
   `/userdata/apex-cache` and mounts them before the container starts, which is

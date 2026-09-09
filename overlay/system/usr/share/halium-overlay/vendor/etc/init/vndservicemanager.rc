@@ -1,0 +1,23 @@
+# vndservicemanager is the Android 12+ C++ rewrite, whose Access::Access() does
+# an unconditional CHECK(selinux_status_open(true) >= 0). Without selinuxfs it
+# aborts on every start, /dev/vndbinder never gets a context manager, the
+# display composer waits on it forever and there is no display at all.
+#
+# libselinux_stubs.so (shipped in /system/lib64 by Halium) stubs out
+# selinux_status_open, selinux_check_access and the selabel_* family, which is
+# what upstream halium-gki preloads here. This is the fix that lets AppArmor be
+# the LSM: without it this port had to make SELinux the exclusive LSM instead,
+# which silently disabled AppArmor and took click app confinement with it.
+#
+# lxc-android-config's mount-halium-overlay bind-mounts this over
+# /vendor/etc/init/vndservicemanager.rc before the container starts.
+service vndservicemanager /vendor/bin/vndservicemanager /dev/vndbinder
+    setenv LD_PRELOAD libselinux_stubs.so
+    class core
+    user system
+    group system readproc
+    writepid /dev/cpuset/system-background/tasks
+    onrestart class_restart main
+    onrestart class_restart hal
+    onrestart class_restart early_hal
+    shutdown critical
