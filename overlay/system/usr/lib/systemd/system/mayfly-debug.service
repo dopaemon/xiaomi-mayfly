@@ -1,0 +1,11 @@
+[Unit]
+Description=mayfly debug access (sshd + static IP + journal dump)
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/mayfly-debug.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

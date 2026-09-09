@@ -1,0 +1,13 @@
+[Unit]
+Description=mayfly debug: dump logcat once the Android container has settled
+After=lxc-android-config.service
+
+[Service]
+# The Android log is the only place HAL-level failures show up: the
+# hwservicemanager retry loop that stalled the shell for 120s was invisible
+# everywhere else. Written to /userdata so it survives for a TWRP rescue read.
+Type=oneshot
+ExecStart=/bin/sh -c 'sleep 60; /usr/bin/lxc-attach -n android -- /system/bin/logcat -d > /userdata/mayfly-logcat.txt 2>&1; sync'
+
+[Install]
+WantedBy=multi-user.target

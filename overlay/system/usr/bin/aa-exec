@@ -1,0 +1,23 @@
+#!/bin/sh
+# The kernel initialises SELinux, not AppArmor: only one exclusive LSM comes up
+# on 5.10 and halium/xiaomi-mayfly/selinux.config puts selinux first on purpose,
+# because vndservicemanager aborts without selinuxfs and there is then no
+# display at all. So the packaged aa-exec always exits with "AppArmor interface
+# not available" and every lomiri-app-launch click unit fails before it starts
+# the app -- legacy apps still run, click apps never do.
+#
+# This deliberately replaces the apparmor package's binary rather than shadowing
+# it from /usr/local/bin: liblomiri-app-launch.so.0 has the absolute path
+# /usr/bin/aa-exec baked in, so PATH order is never consulted. Drop the
+# confinement options and run the command unconfined. If AppArmor is ever the
+# LSM that initialises here, delete this file and let the package's binary back.
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -p|-n|-f) shift 2 ;;
+        --profile=*|--namespace=*|--file=*) shift ;;
+        -i|-v|-d|--immediate|--verbose|--debug) shift ;;
+        --) shift; break ;;
+        *) break ;;
+    esac
+done
+exec "$@"

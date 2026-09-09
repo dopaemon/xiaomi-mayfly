@@ -53,9 +53,40 @@ print(calculate_offset('$apex_file'))
 " 2>/dev/null || echo 0
 }
 
+# A compressed APEX (.capex) carries the real .apex deflated inside it as
+# "original_apex". Android decompresses those in apexd, which Halium does not
+# run, so do it here -- once: swcodec alone is 30 MB and this runs on every
+# boot. Echoes the file name so the caller can go on treating it as a .apex.
+decompress_capex() {
+    local source_path="$1"
+    local cache=/userdata/apex-cache
+    local out="$cache/$(basename "${source_path%.capex}").apex"
+
+    if [ ! -s "$out" ] || [ "$source_path" -nt "$out" ]; then
+        mkdir -p "$cache"
+        log "Decompressing $source_path"
+        python3 -c "
+import shutil, sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z, z.open('original_apex') as f, \
+        open(sys.argv[2] + '.part', 'wb') as o:
+    shutil.copyfileobj(f, o, 1 << 20)
+" "$source_path" "$out" || { rm -f "$out.part"; return 1; }
+        mv "$out.part" "$out"
+    fi
+
+    echo "$out"
+}
+
 mount_apex() {
     source_path="$1"
     target_path="$2"
+
+    if [ -f "$source_path" ] && [[ "$source_path" == *.capex ]]; then
+        source_path=$(decompress_capex "$source_path") || {
+            log "Could not decompress $1, skipping"
+            return
+        }
+    fi
 
     if [ -d "$source_path" ]; then
         # Directory-based APEX
@@ -275,6 +306,57 @@ if [ -L /android/vendor/odm ] && \
     fi
 fi
 
+# The stock vendor_dlkm modules are built for 5.10.245 and every one of them
+# fails vermagic against our kernel -- msm_drm included, so there is no DRM
+# device and the QTI composer segfaults on a null display handle. Our own
+# build of the same modules can be dropped in /userdata/vdlkm-modules (flat
+# Android layout, modules.dep with /vendor_dlkm/lib/modules paths) instead of
+# flashing vendor_dlkm.img; bind it over the stock tree so anything in the
+# container that modprobes finds ours, and load the list here, from the host,
+# before init starts any HAL.
+if [ -d /userdata/vdlkm-modules ] && [ -d /android/vendor_dlkm/lib/modules ]; then
+    mount --bind /userdata/vdlkm-modules /android/vendor_dlkm/lib/modules
+    log "Loading second stage modules"
+    modprobe -a $(cat /userdata/vdlkm-modules/modules.load) || true
+fi
+
+# Those modules are insmod'ed above, before systemd-udev-trigger runs, so the
+# kgsl-3d0 rule in 70-qcom-common.rules has not been applied to the node yet
+# and it is still root-owned. The root system compositor renders its spinner
+# either way, but Lomiri runs as phablet, cannot open the GPU, and never puts
+# a surface up -- the splash then stays forever. udevadm trigger/settle here
+# does not help: udevd is not up at this stage of boot.
+chmod 0666 /dev/kgsl-3d0 2>/dev/null || true
+
+# Android 12's init renames /dev/ashmem to /dev/ashmem$boot_id inside its own
+# mount namespace, and libcutils only ever looks for that name. Host processes
+# using libhybris (lomiri-system-compositor) live outside that namespace, so
+# they find nothing, HWC2 cannot mmap its fast message queue, and Mir destroys
+# display 0 and exits 0 with no error. Point the expected name at the real node.
+ashmem_path="/dev/ashmem$(cat /proc/sys/kernel/random/boot_id)"
+if [ ! -e "$ashmem_path" ]; then
+    if [ ! -e /dev/ashmem ]; then
+        mknod /dev/ashmem c 10 "$(awk '$2 == "ashmem" { print $1 }' /proc/misc)"
+    fi
+    chmod 0666 /dev/ashmem
+    ln -s /dev/ashmem "$ashmem_path"
+fi
+
+# /etc/pam.d/lightdm makes a password-less login "sufficient" only for members
+# of nopasswdlogin, and that group is empty here while phablet's shadow entry
+# has an empty password. Unlocking therefore fell through to common-auth,
+# failed, and the greeter retried forever -- the shell looked frozen mid
+# animation. phablet lives in /var/lib/extrausers but the group does not, and
+# the rootfs is read only, so patch a copy and bind it over, the same trick
+# used for the init .rc files below.
+if ! grep -q '^nopasswdlogin:.*[:,]phablet' /etc/group; then
+    log "Adding phablet to nopasswdlogin"
+    awk -F: 'BEGIN { OFS = ":" }
+             $1 == "nopasswdlogin" { $4 = ($4 == "" ? "phablet" : $4 ",phablet") }
+             1' /etc/group >/run/mayfly-group
+    mount --bind /run/mayfly-group /etc/group
+fi
+
 # Both /vendor/etc/init/hw/init.qti.kernel.rc and init.target.rc do
 #   wait_for_prop vendor.all.modules.ready 1
 # in "on init". That property is only set by /vendor/bin/vendor_modprobe.sh
@@ -349,11 +431,23 @@ if [ -d /android/apex ]; then
 
         for apex_entry in "$apex_dir"/*; do
             # Extract APEX name (remove directory suffixes and .apex extension)
-            apex_name=$(basename "$apex_entry" | sed 's/\.\(release\|debug\|apex\)$//')
+            apex_name=$(basename "$apex_entry" | sed 's/\.\(release\|debug\|capex\|apex\)$//')
             target_path="/android/apex/${apex_name}"
 
             case "$apex_name" in
-                com.android.runtime|com.android.art|com.android.i18n|com.android.vndk.*)
+                # media.swcodec provides media.swcodec, the only implementation
+                # of android.hardware.media.c2@1.0::IComponentStore/software on
+                # this device. Without it hwservicemanager answers getService()
+                # with null forever, anything that touches the media stack
+                # (lomiri-telephony-service-handler, media-hub) hangs in a 1s
+                # binder retry loop and never takes its DBus name, and Lomiri
+                # then blocks on the 120s DBus activation timeout every time a
+                # new surface appears. init parses /apex/*/etc/*.rc in
+                # perform_apex_config during "on init", so mounting here -- ie
+                # before the container starts -- is enough to define the
+                # service; it is "class main" and starts with the rest.
+                com.android.runtime|com.android.art|com.android.i18n|com.android.vndk.*|\
+                com.android.media|com.android.media.swcodec|com.android.conscrypt)
                     mount_apex "$apex_entry" "$target_path"
                     ;;
             esac

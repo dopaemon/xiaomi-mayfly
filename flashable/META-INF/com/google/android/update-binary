@@ -84,18 +84,24 @@ flash boot.img boot
 show_progress 0.25 1
 flash vendor_boot.img vendor_boot
 show_progress 0.25 1
+# The stock overlays, straight from prebuilt/dtbo.img: ABL matches them against
+# the base DTBs in vendor_boot and drops to fastboot if they do not agree, so a
+# self-built dtbo bricks the boot. deviceinfo pins deviceinfo_prebuilt_dtbo for
+# the same reason -- never replace this with a built one.
 flash dtbo.img dtbo
-show_progress 0.25 1
-# Halium recovery has its own 100 MiB A/B partition here, so this overwrites
-# whatever recovery is installed -- TWRP included.
-flash recovery.img recovery
-show_progress 0.25 1
+show_progress 0.5 1
+
+# recovery.img is deliberately NOT flashed here. Halium recovery shares the
+# 100 MiB recovery partition with TWRP, and this zip is installed from TWRP --
+# flashing it would destroy the only rescue path back to a wedged rootfs.
+# It ships as a separate release asset; fastboot it by hand when the UT
+# installer needs it, and reflash TWRP afterwards.
 # Our modules, built against our kernel. The stock ones are built against
 # 5.10.245 and every insmod fails vermagic, taking msm_drm and the display with
 # them.
 flash_logical vendor_dlkm.img vendor_dlkm
 
 ui_print " "
-ui_print " Done. Reboot to recovery to install the rootfs,"
-ui_print " or just reboot if it is already installed."
+ui_print " Done. TWRP was left alone; flash recovery.img by"
+ui_print " hand if you need the UT installer."
 ui_print " "

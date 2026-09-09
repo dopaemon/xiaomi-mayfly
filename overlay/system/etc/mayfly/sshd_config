@@ -1,0 +1,22 @@
+# Debug sshd for the mayfly port, run by mayfly-debug.service. Separate from the
+# distro's ssh.service on purpose: that one is socket-activated, disabled by
+# lxc-android-config and dependent on PAM, none of which can be relied on while
+# the port is still being brought up.
+Port 22
+HostKey /userdata/mayfly_hostkey
+PidFile /userdata/mayfly-sshd.pid
+
+# Password auth against the known default below; the shipped key still works.
+AuthorizedKeysFile /etc/mayfly/authorized_keys
+PasswordAuthentication yes
+PermitRootLogin yes
+PermitEmptyPasswords no
+KbdInteractiveAuthentication no
+
+# PAM would drag in pam_fscrypt and the lightdm stack, which is exactly what
+# used to hang. Checking /etc/shadow directly keeps this usable when the rest
+# of the session is wedged.
+UsePAM no
+StrictModes no
+PrintMotd no
+Subsystem sftp internal-sftp

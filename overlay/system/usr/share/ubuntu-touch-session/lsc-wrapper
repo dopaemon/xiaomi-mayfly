@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# Allow system integrators to tweak the default system compositor behavior
+LSC_FLAGS="--enable-num-framebuffers-quirk=true --disable-overlays=false"
+if [ -d /etc/default/lsc-wrapper.d ]
+then
+    for f in /etc/default/lsc-wrapper.d/*
+    do
+        . "${f}"
+    done
+fi
+
+# We need to grab ANDROID_ROOT from /etc/environment, because Mir uses
+# it to find input configuration files and autopilot won't work without that.
+. /etc/environment
+export ANDROID_ROOT
+export MIR_SERVER_ENABLE_MIRCLIENT=1
+
+# Workaround for running the mir server on QEMU/KVM
+case $(systemd-detect-virt --vm) in
+qemu|kvm)
+    export MIR_MESA_KMS_DISABLE_MODESET_PROBE=1
+esac
+
+# Hybris devices tends to have the TLS (thread-local storage) area clobbered by
+# the Bionic libc. This LD_PRELOAD reserves some space for Bionic libc to clober,
+# so that it doesn't crash.
+# This lib is usually installed on Hybris devices. If not, Glibc will complain
+# but will continue.
+# Also pin the android2 platform module. Mir dlcloses it while an exception_ptr
+# holding an error thrown from inside it is still alive; exception_ptr's
+# _M_release() then runs a destructor whose code has been unmapped and the
+# compositor dies of SIGSEGV before it can log what actually went wrong. That
+# turned every display bring-up failure into a silent crash.
+export LD_PRELOAD=libtls-padding.so:/usr/lib/aarch64-linux-gnu/mir1/server-platform/graphics-android2.so.16
+
+# FIXME: this is done primarily to prevent collision with root's user session.
+# This should be done by LightDM when it properly support system compositor
+# over Wayland.
+export XDG_RUNTIME_DIR=/run
+export WAYLAND_DISPLAY=wayland-syscomp
+
+# lightdm captures only the compositor's stdout, so Mir's report_exception()
+# message on the way out lands nowhere. Keep it where mayfly-debug can read it.
+exec 2>>/userdata/usc-err.txt
+
+exec lomiri-system-compositor \
+    $LSC_FLAGS \
+    --console-provider=vt \
+    --spinner=/usr/bin/lomiri-system-compositor-spinner \
+    "$@"

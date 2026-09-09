@@ -100,11 +100,59 @@ Flashing by hand needs verification off, or the bootloader rejects our images:
 
     fastboot --disable-verity --disable-verification flash vbmeta vbmeta.img
 
+## Debug access
+
+The port ships two units that make a wedged shell debuggable without pulling
+the battery. Both are deliberately enabled: bringing this up meant flashing the
+LineageOS boot chain, booting TWRP and mounting `system_b` by hand for every
+single log read, which is unworkable.
+
+- `mayfly-usbnet.service` brings up a CDC-ECM gadget on the USB-C port, so the
+  phone appears as a plain ethernet device. It is 10.15.19.82/24; give the host
+  side 10.15.19.81/24 on the interface whose MAC is 02:1a:11:00:00:02. It is
+  ECM rather than adb because adbd never writes its descriptors to `ep0`, so
+  `ffs_alloc()` returns -ENODEV and every UDC bind fails with
+  `udc a600000.dwc3: failed to start mayfly: -19`. ECM is built into the GKI
+  kernel and needs no daemon.
+- `mayfly-debug.service` runs its own sshd, pins 192.168.1.222 on the WLAN if
+  there is one, and dumps the journal, dmesg and the per-thread wchan of every
+  Lomiri/compositor thread to `/userdata` every 20s so TWRP can still read them.
+
+Login is `root` / `phablet`, by password or with the key in
+`overlay/system/etc/mayfly/authorized_keys`:
+
+    ssh root@10.15.19.82
+
+On a host where a VPN has swallowed the 10/8 routes, use the link-local address
+instead -- `ping6 -c3 -I <iface> ff02::1` finds it:
+
+    ssh root@fe80::1a:11ff:fe00:1%<iface>
+
+**This is a known root password reachable from any network the phone joins.**
+Fine while porting, not fine for daily use: drop `mayfly-debug.service` from
+`multi-user.target.wants` before handing the phone to anyone.
+
+The rootfs is read-only but remounts read-write, so fixes can be tested over
+ssh and only then folded into `overlay/`.
+
 ## Still missing
 
 - `overlay/` covers gbinder.conf, deviceinfo yaml, QCOM udev rules, libinput
   quirks and the lxc-android-config overrides. RIL (`ofono/binder.d`), MTP
   (usb-moded/umtprd) and USB tethering are written after first boot.
+- AppArmor cannot run on this kernel (see `selinux.config`), so
+  `overlay/system/usr/bin/aa-exec` replaces the packaged binary with a wrapper
+  that drops the confinement options: without it `aa-exec` aborts and no click
+  app can start at all. Click apps therefore run unconfined. Legacy apps never
+  went through it and were unaffected.
+- The telephony handler needs `media.swcodec`, which lives in a compressed APEX
+  (`.capex`). `mount-android-partitions` now decompresses those once into
+  `/userdata/apex-cache` and mounts them before the container starts, which is
+  early enough for init's `perform_apex_config` to pick up the service. Without
+  it `hwservicemanager` answers `getService()` for
+  `android.hardware.media.c2@1.0::IComponentStore/software` with null forever,
+  and Lomiri blocks on the 120s DBus activation timeout every time a new
+  surface appears -- the shell looks frozen whenever an app is opened.
 - `vendor-ramdisk-overlay/lib/modules/modules.load` is the kernel's own
   `modules.list.msm.waipio` (100 modules). Stock loads 12 more Xiaomi-specific
   ones (`bootinfo`, `mi_memory`, `mi_power`, `metis`, `swinfo`, ...); add them

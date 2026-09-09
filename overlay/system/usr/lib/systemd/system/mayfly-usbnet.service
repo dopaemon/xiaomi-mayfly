@@ -1,0 +1,14 @@
+[Unit]
+Description=mayfly debug USB network gadget (CDC-ECM)
+After=lxc-android-config.service
+# usb-moded drives the gadget itself and would fight over the UDC.
+Conflicts=usb-moded.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+ExecStart=/usr/local/bin/mayfly-usbnet.sh
+
+[Install]
+WantedBy=multi-user.target
