@@ -32,9 +32,9 @@ ln -sfn "$G/functions/ecm.usb0" "$G/configs/c.1/ecm.usb0"
 # controller back for as long as the service runs.
 while :; do
     if [ -n "$(cat "$G/UDC" 2>/dev/null)" ]; then
-        # Never assume "usb0": once udevd is up it renames the ECM netdev by
-        # its MAC (enx021a11000001), and a faster boot is enough to change
-        # which side of that race we are on. configfs knows the real name.
+        # Defensive: the kernel has always called this usb0 here, but that is
+        # not guaranteed -- udev can rename a netdev by its MAC. Ask configfs
+        # for the name the gadget actually got rather than assuming.
         IF=$(cat "$G/functions/ecm.usb0/ifname" 2>/dev/null)
         if [ -n "$IF" ]; then
             REAL=$(ip -o link show | awk -v m="$DEV_MAC" '$0 ~ m { sub(":$", "", $2); print $2; exit }')
