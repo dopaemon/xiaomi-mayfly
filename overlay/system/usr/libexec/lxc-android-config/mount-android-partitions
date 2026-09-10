@@ -342,20 +342,14 @@ if [ ! -e "$ashmem_path" ]; then
     ln -s /dev/ashmem "$ashmem_path"
 fi
 
-# /etc/pam.d/lightdm makes a password-less login "sufficient" only for members
-# of nopasswdlogin, and that group is empty here while phablet's shadow entry
-# has an empty password. Unlocking therefore fell through to common-auth,
-# failed, and the greeter retried forever -- the shell looked frozen mid
-# animation. phablet lives in /var/lib/extrausers but the group does not, and
-# the rootfs is read only, so patch a copy and bind it over, the same trick
-# used for the init .rc files below.
-if ! grep -q '^nopasswdlogin:.*[:,]phablet' /etc/group; then
-    log "Adding phablet to nopasswdlogin"
-    awk -F: 'BEGIN { OFS = ":" }
-             $1 == "nopasswdlogin" { $4 = ($4 == "" ? "phablet" : $4 ",phablet") }
-             1' /etc/group >/run/mayfly-group
-    mount --bind /run/mayfly-group /etc/group
-fi
+# Do not put phablet into nopasswdlogin here. It was done once, because
+# unlocking fell through to common-auth and the greeter retried forever, but
+# the real cause was the clock: phablet's shadow entry has an empty password
+# and a lastchange in 2026, which is in the future while the clock reads 1970,
+# so PAM refused it. mayfly-clock.service fixes that, and common-auth already
+# carries "pam_extrausers.so nodelay nullok". Being in that group also makes
+# lomiri's DBusLomiriSessionService::CanLock() return false, so PromptLock()
+# does nothing and the screen turns off without ever locking.
 
 # Both /vendor/etc/init/hw/init.qti.kernel.rc and init.target.rc do
 #   wait_for_prop vendor.all.modules.ready 1
