@@ -137,6 +137,17 @@ ssh and only then folded into `overlay/`.
 
 ## Still missing
 
+- Suspend works but nothing asks for it. `systemctl suspend` reaches deep
+  suspend and everything comes back, now that
+  `usr/lib/systemd/system-sleep/mayfly-bt-uart` powers the Bluetooth adapter
+  down first -- without that the kernel's Bluetooth PM notifier votes
+  `894000.qcom,qup_uart` awake from inside the suspend call and the port fails
+  it with -EBUSY. But no timer ever triggers one: repowerd's
+  `user_inactivity_normal_suspend_timeout` is the hardcoded `infinite_timeout`,
+  `libsuspend.so` is gone in Android 12+, `CONFIG_PM_AUTOSLEEP` is not set, and
+  `android.system.suspend-service` only waits on binder because Halium has no
+  `system_server` to call it. So the screen turns off and the SoC stays awake,
+  drawing ~200 mA.
 - `overlay/` covers gbinder.conf, deviceinfo yaml, QCOM udev rules, libinput
   quirks and the lxc-android-config overrides. RIL (`ofono/binder.d`), MTP
   (usb-moded/umtprd) and USB tethering are written after first boot.
