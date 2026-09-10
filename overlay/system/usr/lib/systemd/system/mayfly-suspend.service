@@ -1,0 +1,12 @@
+[Unit]
+Description=mayfly: suspend after the screen goes off, on battery
+Wants=repowerd.service
+After=repowerd.service dbus.socket
+
+[Service]
+ExecStart=/usr/local/bin/mayfly-suspend.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
