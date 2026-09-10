@@ -1,0 +1,12 @@
+# Keep the kernel's name for the Wi-Fi and USB gadget interfaces. udev's
+# predictable naming renamed wlan0 to wlp1s0 the moment the module happened to
+# load after udevd was up -- and which side of that race a boot lands on
+# changed once boot went from 66s to 13s. Everything in a Halium port, from
+# Android's own netd config to porting notes, assumes wlan0. Same idea as
+# /etc/systemd/network/00-rmnet-kernel.link, which UT already ships for rmnet_*.
+[Match]
+OriginalName=wlan* usb*
+
+[Link]
+NamePolicy=kernel
+MACAddressPolicy=persistent

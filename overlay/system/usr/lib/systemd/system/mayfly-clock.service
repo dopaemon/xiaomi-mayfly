@@ -1,0 +1,18 @@
+[Unit]
+Description=mayfly: advance the clock to the last known good time
+DefaultDependencies=no
+Conflicts=shutdown.target
+After=local-fs.target
+Before=sysinit.target systemd-timesyncd.service
+ConditionPathIsDirectory=/userdata
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/mayfly-clock.sh
+# Refresh the stamp on a clean shutdown; mayfly-debug.service also touches it
+# every 20s so an unclean one loses at most that much.
+ExecStop=/bin/touch /userdata/mayfly-clock-stamp
+
+[Install]
+WantedBy=sysinit.target
