@@ -1,6 +1,20 @@
 #!/bin/bash
 set -xe
 
+# audio-kernel picks the speaker codec per product: asoc/Kbuild:247 turns
+# TARGET_PRODUCT=mayfly into -DCONFIG_TARGET_PRODUCT_MAYFLY, and only then does
+# asoc/msm_dailink.h:371 wire TERT_TDM_RX_0 to the two AW882xx smart amps
+# ("aw882xx_smartpa.2-0034/35"). Without it the dai link falls through to the
+# dummy "msm-stub-codec.1", whose rx dai advertises S16_LE only
+# (asoc/codecs/msm_stub.c:23) - so PAL's 96 kHz / S32_LE speaker backend dies in
+# pcm_open with "cannot set hw params: Invalid argument" and nothing reaches the
+# speakers. Verified against LineageOS: its machine_dlkm.ko carries the aw882xx
+# names, ours carried only msm-stub-codec.1.
+#
+# build-kernel.sh runs make without scrubbing the environment and no Makefile in
+# the tree assigns TARGET_PRODUCT, so exporting it here is enough.
+export TARGET_PRODUCT=mayfly
+
 # The kleaf branch is the only one with deviceinfo_kernel_extra_repos and
 # deviceinfo_kernel_external_modules, which mayfly needs for sm8450-modules.
 [ -d build ] || git clone -b "${BUILD_TOOLS_BRANCH:-personal/notkit/build-kleaf-modules}" \
