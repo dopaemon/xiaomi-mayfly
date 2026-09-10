@@ -1,0 +1,58 @@
+#!/bin/sh
+# Power the Bluetooth adapter down across suspend, or the device never sleeps.
+#
+# The QTI Bluetooth HAL takes a PM vote on 894000.qcom,qup_uart for every HCI
+# transaction and only drops it from its IBS idle timer ~1.2-1.8s later, while
+# msm_geni_serial_sys_suspend() fails the whole system suspend if the port is
+# not runtime suspended at that instant:
+#
+#   441.046  this hook runs, qup_uart already suspended
+#   441.049  systemd-sleep: Performing sleep operation 'suspend'
+#   441.114  vote_clock_on :bluetooth@1.0-s ioctl:1 usage_count:1
+#   441.165  msm_geni_serial_sys_suspend:Active userspace vote  -> -EBUSY
+#   442.315  vote_clock_off:POSIX timer 5   ioctl:0
+#
+# The traffic at 441.114 is the kernel's own Bluetooth PM notifier setting up
+# wake-on-BT, and it reaches the controller through vhci -> bluebinder -> HAL,
+# so it lands inside the suspend call itself, after every hook has run. There
+# is no window to wait for: every attempt re-triggers it, which is why the
+# device never suspends with Bluetooth on and why retrying does not help.
+#
+# Taking the adapter down first leaves the notifier nothing to ask. Do it
+# through bluez rather than rfkill: an rfkill block leaves hci0 unable to
+# re-init ("Can't init device hci0: Connection timed out") and needs bluebinder
+# and bluetoothd restarted, while Powered=false comes back cleanly.
+STATE=/run/mayfly-bt-was-powered
+STATUS=/sys/bus/platform/devices/894000.qcom,qup_uart/power/runtime_status
+ADAPTER=/org/bluez/hci0
+
+set_powered() {
+    busctl --system set-property org.bluez "$ADAPTER" org.bluez.Adapter1 \
+        Powered b "$1" 2>/dev/null
+}
+
+case "$1" in
+pre)
+    rm -f "$STATE"
+    powered=$(busctl --system get-property org.bluez "$ADAPTER" \
+        org.bluez.Adapter1 Powered 2>/dev/null | awk '{print $2}')
+    [ "$powered" = "true" ] || exit 0
+
+    # Only restore what we turned off.
+    : >"$STATE"
+    set_powered false
+
+    # Taking it down is itself HCI traffic, so wait out that last vote.
+    i=0
+    while [ "$(cat "$STATUS" 2>/dev/null)" != "suspended" ] && [ "$i" -lt 50 ]; do
+        sleep 0.1
+        i=$((i + 1))
+    done
+    echo "mayfly-bt-uart: adapter down, qup_uart $(cat "$STATUS" 2>/dev/null)" >&2
+    ;;
+post)
+    [ -e "$STATE" ] || exit 0
+    rm -f "$STATE"
+    set_powered true
+    ;;
+esac
