@@ -46,7 +46,11 @@ while :; do
     dmesg > $D/mayfly-kmsg.log 2>&1
     ip -4 addr > $D/mayfly-net.log 2>&1
     # Keeps mayfly-clock.service's stamp current across an unclean shutdown.
-    touch $D/mayfly-clock-stamp
+    # Only when the clock is plausible: something in the Android container puts
+    # it back to 1970 shortly after mayfly-clock.service has already corrected
+    # it, and touching the stamp during that window poisons the one reference
+    # the next boot has.
+    [ "$(date +%Y)" -ge 2025 ] && touch $D/mayfly-clock-stamp
     # When the UI stalls, lomiri keeps handling sensor and battery events, so
     # there is no log line to find: the state is only visible as what each
     # thread is blocked in. This is what identified the DBus stall.

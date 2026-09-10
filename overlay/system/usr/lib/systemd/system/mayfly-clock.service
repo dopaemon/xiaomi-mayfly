@@ -11,8 +11,9 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/mayfly-clock.sh
 # Refresh the stamp on a clean shutdown; mayfly-debug.service also touches it
-# every 20s so an unclean one loses at most that much.
-ExecStop=/bin/touch /userdata/mayfly-clock-stamp
+# every 20s so an unclean one loses at most that much. Same guard as there: a
+# stamp written while the clock reads 1970 is worse than no stamp at all.
+ExecStop=/bin/sh -c '[ "$(date +%%Y)" -ge 2025 ] && touch /userdata/mayfly-clock-stamp'
 
 [Install]
 WantedBy=sysinit.target
