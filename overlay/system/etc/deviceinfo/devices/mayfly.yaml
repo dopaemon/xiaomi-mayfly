@@ -5,6 +5,16 @@ mayfly:
   DeviceType: phone
   # 8 * TARGET_SCREEN_DENSITY / 160, density from BoardConfig.mk:23
   GridUnit: 22
-  SupportedOrientations: Portrait, LandscapeInverted, PortraitInverted, Landscape
+  # A YAML list, not a comma-separated string, and the inverted names read
+  # "Inverted<X>" -- deviceinfo parses anything else to an empty list, and an
+  # empty SupportedOrientations makes OrientedShell.qml:233 fall back to
+  # useNativeOrientation, which masks the shell down to Portrait alone. The
+  # sensors keep working and qtmir keeps reporting the new orientation; the
+  # screen just never turns.
+  SupportedOrientations:
+    - Portrait
+    - InvertedPortrait
+    - Landscape
+    - InvertedLandscape
   PrimaryOrientation: Portrait
   OfonoPlugin: binder
