@@ -11,9 +11,10 @@ mayfly:
   # useNativeOrientation, which masks the shell down to Portrait alone. The
   # sensors keep working and qtmir keeps reporting the new orientation; the
   # screen just never turns.
+  # InvertedPortrait left out on purpose: a phone held upside down should stay
+  # put rather than flip 180 degrees.
   SupportedOrientations:
     - Portrait
-    - InvertedPortrait
     - Landscape
     - InvertedLandscape
   PrimaryOrientation: Portrait
